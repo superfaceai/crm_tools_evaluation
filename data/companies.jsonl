@@ -1,0 +1,5 @@
+{"company_id": "company_001", "name": "ACME Ltd.", "domain": "acme.com", "contacts": ["contact_001"]}
+{"company_id": "company_002", "name": "Wayne Enterprises", "domain": "wayne.com", "contacts": ["contact_002"]}
+{"company_id": "company_003", "name": "Evil Corp", "domain": "evilcorp.biz", "contacts": ["contact_003"]}
+{"company_id": "company_004", "name": "Umbrella Corporation", "domain": "umbrella.co", "contacts": ["contact_004"]}
+{"company_id": "company_005", "name": "Initech", "domain": "initech.org", "contacts": ["contact_005"]}

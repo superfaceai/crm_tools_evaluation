@@ -1,0 +1,5 @@
+{"contact_id": "contact_001", "name": "John Doe", "email": "john_doe@acme.com", "company_id": "company_001", "lead_status": "NEW"}
+{"contact_id": "contact_002", "name": "Bruce Wayne", "email": "bruce@wayne.com", "company_id": "company_002", "lead_status": "CONNECTED"}
+{"contact_id": "contact_003", "name": "Elliot Alderson", "email": "elliot@evilcorp.biz", "company_id": "company_003", "lead_status": "ATTEMPTED_TO_CONTACT"}
+{"contact_id": "contact_004", "name": "Alice Abernathy", "email": "alice@umbrella.co", "company_id": "company_004", "lead_status": "OPEN_DEAL"}
+{"contact_id": "contact_005", "name": "Peter Gibbons", "email": "peter@initech.org", "company_id": "company_005", "lead_status": "IN_PROGRESS"}
