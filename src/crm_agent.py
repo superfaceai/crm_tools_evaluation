@@ -23,6 +23,7 @@ class CRMAgent(Agent):
                 model=self.model,
                 messages=messages,
                 tools=[t.json_schema_dump() for t in self.tools],
+                store=True
             )
             
             msg = res.choices[0].message.model_dump()

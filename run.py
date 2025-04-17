@@ -3,8 +3,7 @@ import json
 from dotenv import load_dotenv
 from superface import Superface
 from superface.client.superface import SuperfaceAPI
-from composio import ComposioToolSet
-from datetime import datetime
+from composio_openai import ComposioToolSet, App, Tag, Action
 from typing import List, Optional
 from src.reset_hubspot import reset_hubspot
 from src.shared import Model, Task, Tool, Toolset, SolveResult
@@ -53,7 +52,37 @@ def create_superface_specialiasts_toolset() -> Toolset:
 
 def create_composio_toolset() -> Toolset:
     toolset = ComposioToolSet(api_key=os.getenv("COMPOSIO_API_KEY"))
-    print(f"Toolset: {toolset}")
+
+    tools = toolset.get_tools(
+        # filtering by tags doesn't work
+        # apps=[App.HUBSPOT],
+        # tags=[Tag.HUBSPOT_CORE, Tag.HUBSPOT_BASIC],
+        actions=[
+            Action.HUBSPOT_CREATE_CONTACT_OBJECT_WITH_PROPERTIES, 
+            Action.HUBSPOT_CREATE_COMPANY_OBJECT, 
+            Action.HUBSPOT_SEARCH_CONTACTS_BY_CRITERIA, 
+            Action.HUBSPOT_SEARCH_COMPANY_OBJECTS,
+            Action.HUBSPOT_CREATE_NEW_DEAL_OBJECT,
+            Action.HUBSPOT_SEARCH_DEALS_BY_CRITERIA,
+            Action.HUBSPOT_READ_PROPERTY_GROUPS_FOR_OBJECT_TYPE,
+            Action.HUBSPOT_LIST_ASSOCIATION_TYPES,
+            Action.HUBSPOT_CREATE_BATCH_OF_OBJECTS,
+        ],
+    )
+    
+    return Toolset(
+        name="Composio Toolset",
+        tools=[
+            Tool(
+                name=tool['function']['name'],
+                description=tool['function']['description'],
+                parameters=tool['function']['parameters'],
+                handler=lambda arguments, tool=tool: toolset.execute_action(action=tool["function"]["name"], params=json.loads(arguments))
+            )
+            for tool in tools
+        ]
+    )
+    
 
 def load_tasks(slice: Optional[slice] = None) -> List[Task]:
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -153,21 +182,20 @@ def dump_hubspot_state():
     hubspot_state = dump_hubspot()
     print(f"HubSpot State: {hubspot_state}")
 
-def run(model = Model.GPT_4o, trials_count = 5):
-    sf_toolset = create_superface_toolset()
-    sf_specialist_toolset = create_superface_specialiasts_toolset()
-
+def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o):
     tasks = load_tasks()
-    for toolset in [sf_toolset, sf_specialist_toolset]:
+    for toolset in toolsets:
         results = []
-        for task in tasks:
+        for task in tasks[0:1]:
             result = solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count)    
             results.extend(result)
         write_results_to_file(toolset, results)
 
 if __name__ == "__main__":
-    # test_agent()
-    # reset_hubspot()
-    # dump_hubspot_state()
-    # create_composio_toolset()
-    run(trials_count=1)
+    sf_toolset = create_superface_toolset()
+    sf_specialist_toolset = create_superface_specialiasts_toolset()
+    composio_toolset = create_composio_toolset()
+    run(
+        toolsets=[composio_toolset],
+        trials_count=5
+    )
