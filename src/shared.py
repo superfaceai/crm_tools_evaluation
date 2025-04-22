@@ -36,6 +36,7 @@ class Verdict(BaseModel):
 class SolveResult(BaseModel):
     task: Task
     model: Model
+    seed: Optional[int] = None
     messages: List[Dict[str, Any]]
     info: Dict[str, Any]
     trial_idx: Optional[int] = None
@@ -52,7 +53,7 @@ class Agent(abc.ABC):
         raise NotImplementedError
 
 class Tool(abc.ABC):
-    def __init__(self, name: str, description: str, parameters: Optional[Dict[str, Any]], handler: callable):
+    def __init__(self, name: str, description: str, parameters: Dict[str, Any], handler: callable):
         self.name = name
         self.description = description
         self.parameters = parameters

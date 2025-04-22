@@ -10,6 +10,7 @@ from src.shared import Model, Task, Tool, Toolset, SolveResult
 from src.crm_agent import CRMAgent
 from src.dump_hubspot import dump_hubspot
 from src.evaluator import Evaluator
+import argparse
 
 load_dotenv()
 def create_empty_toolset() -> Toolset:
@@ -96,7 +97,7 @@ def load_tasks(slice: Optional[slice] = None) -> List[Task]:
         tasks = tasks[slice]
     return tasks
 
-def solve_task(*, task: Task, toolset: Toolset, model: Model, trials_count: int) -> List[SolveResult]:
+def solve_task(*, task: Task, toolset: Toolset, model: Model, trials_count: int, seed: Optional[int] = None) -> List[SolveResult]:
     print(f"🛠️ Task {task.name}")
 
     agent = CRMAgent(
@@ -111,7 +112,7 @@ def solve_task(*, task: Task, toolset: Toolset, model: Model, trials_count: int)
             reset_hubspot()
 
             print(f"🤖 Run {i}/{trials_count}")
-            result = agent.solve(task=task)
+            result = agent.solve(task=task, seed=seed)
             
             result.trial_idx = i
             result.trials_count = trials_count
@@ -182,20 +183,48 @@ def dump_hubspot_state():
     hubspot_state = dump_hubspot()
     print(f"HubSpot State: {hubspot_state}")
 
-def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o):
+def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, seed: Optional[int] = None):    
     tasks = load_tasks()
     for toolset in toolsets:
         results = []
-        for task in tasks[0:1]:
-            result = solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count)    
+        for task in tasks:
+            result = solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count, seed=seed)    
             results.extend(result)
         write_results_to_file(toolset, results)
 
 if __name__ == "__main__":
-    sf_toolset = create_superface_toolset()
-    sf_specialist_toolset = create_superface_specialiasts_toolset()
-    composio_toolset = create_composio_toolset()
+    parser = argparse.ArgumentParser(description="Run CRM Tools Benchmark")
+    parser.add_argument(
+        "--toolsets",
+        nargs="+",
+        choices=["superface", "superface_specialist", "composio"],
+        required=True,
+        help="Specify one or more toolsets to run: superface, superface_specialist, or composio"
+    )
+    parser.add_argument(
+        "--trials",
+        type=int,
+        default=5,
+        help="Specify the number of trials to run (default: 5)"
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Specify the seed (default: None)"
+    )
+    args = parser.parse_args()
+
+    toolset_creators = {
+        "superface": create_superface_toolset,
+        "superface_specialist": create_superface_specialiasts_toolset,
+        "composio": create_composio_toolset,
+    }
+
+    selected_toolsets = [toolset_creators[toolset]() for toolset in args.toolsets]
+
     run(
-        toolsets=[composio_toolset],
-        trials_count=5
+        toolsets=selected_toolsets,
+        trials_count=args.trials,
+        seed=args.seed
     )

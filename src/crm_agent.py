@@ -1,6 +1,7 @@
 import json
+import os
 from litellm import completion
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from .shared import Agent, Model, Tool, SolveResult
 
 class CRMAgent(Agent):
@@ -12,18 +13,21 @@ class CRMAgent(Agent):
         self.model = model
         self.tools = tools
 
-    def solve(self, task, max_num_steps = 30):
+    def solve(self, task, *, max_num_steps = 30, seed: Optional[int] = None) -> SolveResult:
         messages: List[Dict[str, Any]] = [
             { "role": "system", "content": CRMAgent.instructions },
             { "role": "user", "content": task.prompt }
         ]
 
+        tools = [t.json_schema_dump() for t in self.tools]
+
         for _ in range(max_num_steps):
             res = completion(
                 model=self.model,
                 messages=messages,
-                tools=[t.json_schema_dump() for t in self.tools],
-                store=True
+                tools=tools,
+                store=os.getenv("OPENAI_STORE_COMPLETIONS", "false").lower() in ("true", "1", "yes"),
+                seed=seed,
             )
             
             msg = res.choices[0].message.model_dump()
@@ -55,8 +59,9 @@ class CRMAgent(Agent):
                 break
 
         return SolveResult(
-            model=self.model,
             task=task,
+            model=self.model,            
+            seed=seed,
             messages=messages,
             info={}
         )

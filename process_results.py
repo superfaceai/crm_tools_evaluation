@@ -1,8 +1,9 @@
 import json
 from math import comb
-from typing import List, Dict
+from typing import List
 
 from src.shared import SolveResult
+import os
 
 def calculate_pass_k(results_file: str):
     with open(results_file, 'r') as f:
@@ -39,10 +40,13 @@ def calculate_pass_k(results_file: str):
 
 
 if __name__ == "__main__":
-    print("Pass ^ k for Superface tools")
-    results_file = "results/superface_toolset.jsonl"
-    calculate_pass_k(results_file)
+    results_files = {
+        "Pass^k for Superface tools": "results/superface_toolset.jsonl",
+        "Pass^k for Superface specialist": "results/superface_specialists_toolset.jsonl",
+        "Pass^k for Composio tools": "results/composio_toolset.jsonl",
+    }
 
-    print("Pass ^ k for specialists")
-    results_file = "results/superface_specialists_toolset.jsonl"
-    calculate_pass_k(results_file)
+    for description, results_file in results_files.items():
+        if os.path.exists(results_file):
+            print(description)
+            calculate_pass_k(results_file)
