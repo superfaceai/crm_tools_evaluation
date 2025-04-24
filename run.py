@@ -10,6 +10,7 @@ from src.shared import Model, Task, Tool, Toolset, SolveResult
 from src.crm_agent import CRMAgent
 from src.dump_hubspot import dump_hubspot
 from src.evaluator import Evaluator
+from src.vibecode_toolset import create_vibecode_toolset
 import argparse
 
 load_dotenv()
@@ -193,13 +194,20 @@ def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, see
         write_results_to_file(toolset, results)
 
 if __name__ == "__main__":
+    toolset_creators = {
+        "superface": create_superface_toolset,
+        "superface_specialist": create_superface_specialiasts_toolset,
+        "composio": create_composio_toolset,
+        'vibecode': create_vibecode_toolset,
+    }
+
     parser = argparse.ArgumentParser(description="Run CRM Tools Benchmark")
     parser.add_argument(
         "--toolsets",
         nargs="+",
-        choices=["superface", "superface_specialist", "composio"],
+        choices=list(toolset_creators.keys()),
         required=True,
-        help="Specify one or more toolsets to run: superface, superface_specialist, or composio"
+        help=f"Specify one or more toolsets to run: {', '.join(toolset_creators.keys())}"
     )
     parser.add_argument(
         "--trials",
@@ -214,12 +222,6 @@ if __name__ == "__main__":
         help="Specify the seed (default: None)"
     )
     args = parser.parse_args()
-
-    toolset_creators = {
-        "superface": create_superface_toolset,
-        "superface_specialist": create_superface_specialiasts_toolset,
-        "composio": create_composio_toolset,
-    }
 
     selected_toolsets = [toolset_creators[toolset]() for toolset in args.toolsets]
 
