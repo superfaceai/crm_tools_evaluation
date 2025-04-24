@@ -1,0 +1,75 @@
+name: CRM Tools Evaluation
+
+on:
+  workflow_dispatch:
+    inputs:
+      toolsets:
+        description: "Toolsets to run"
+        required: true
+        type: string
+      trials:
+        description: "Number of trials to run"
+        required: true
+        type: string
+      seed:
+        description: "Random seed (optional)"
+        required: false
+        type: string
+
+jobs:
+  run_tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install .
+
+      - name: Run Tasks
+        run: |
+          # Parse input toolsets and convert to CLI arguments
+          TOOLSET_ARG=""
+          for toolset in ${{ inputs.toolsets }}; do
+            TOOLSET_ARG="${TOOLSET_ARG} --toolsets ${toolset}"
+          done
+
+          # Trials amount
+          TRIALS_ARG=""
+          if [ -n "${{ inputs.trials }}" ]; then
+            TRIALS_ARG="--trials ${{ inputs.trials }}"
+          fi
+
+          # Add seed if provided
+          SEED_ARG=""
+          if [ -n "${{ inputs.seed }}" ]; then
+            SEED_ARG="--seed ${{ inputs.seed }}"
+          fi
+
+          # Create a directory for the results
+          mkdir -p results
+
+          # Run the benchmark
+          python run.py ${TOOLSET_ARG} ${TRIALS_ARG} ${SEED_ARG}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SUPERFACE_API_KEY: ${{ secrets.SUPERFACE_API_KEY }}
+          COMPOSIO_API_KEY: ${{ secrets.COMPOSIO_API_KEY }}
+          HUBSPOT_API_KEY: ${{ secrets.HUBSPOT_API_KEY }}
+
+      - name: Process results
+        run: python process_results.py > results/processed_results.txt
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-results
+          path: |
+            results/*.jsonl
+            results/processed_results.txt
