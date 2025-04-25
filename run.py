@@ -171,6 +171,11 @@ def write_results_to_file(toolset: Toolset, results: List[SolveResult]):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     toolset_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in toolset.name.lower())
     results_file = os.path.join(base_dir, f"./results/{toolset_name}.jsonl")
+    results_dir = os.path.dirname(results_file)
+
+    # Create results directory if it doesn't exist
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
     
     # Backup existing file if it exists
     if os.path.exists(results_file):
