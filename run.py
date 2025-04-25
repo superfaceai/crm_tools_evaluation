@@ -52,6 +52,22 @@ def create_superface_specialiasts_toolset() -> Toolset:
         ]
     )
 
+def create_superface_dynamic_specialists_toolset() -> Toolset:
+    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url="https://pod.superface.ai")
+    specialist_fd = superface.get(path='/api/specialists/dynamic/hubspot', user_id="benchmark")
+
+    return Toolset(
+        name="Superface Dynamic Specialists Toolset",
+        tools=[
+            Tool(
+                name=specialist_fd['name'],
+                description=specialist_fd['description'],
+                parameters=specialist_fd['parameters'],
+                handler=lambda arguments: superface.post(path='/api/specialists/dynamic/hubspot', data=json.loads(arguments), user_id="benchmark"),
+            )
+        ]
+    )
+
 def create_composio_toolset() -> Toolset:
     toolset = ComposioToolSet(api_key=os.getenv("COMPOSIO_API_KEY"))
 
@@ -197,6 +213,7 @@ if __name__ == "__main__":
     toolset_creators = {
         "superface": create_superface_toolset,
         "superface_specialist": create_superface_specialiasts_toolset,
+        "superface_dynamic_specialist": create_superface_dynamic_specialists_toolset,
         "composio": create_composio_toolset,
         'vibecode': create_vibecode_toolset,
     }
