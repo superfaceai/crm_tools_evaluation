@@ -43,6 +43,7 @@ if __name__ == "__main__":
     results_files = {
         "Pass^k for Superface tools": "results/superface_toolset.jsonl",
         "Pass^k for Superface specialist": "results/superface_specialists_toolset.jsonl",
+        "Pass^k for Superface dynamic specialist": "results/superface_dynamic_specialists_toolset.jsonl",
         "Pass^k for Composio tools": "results/composio_toolset.jsonl",
         "Pass^k for Vibe coded tools": "results/vibecode_toolset.jsonl",
     }
