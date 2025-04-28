@@ -14,7 +14,8 @@ This repository aims to systematically compare various tool collections that fac
 
 Initial toolsets included in the evaluation:
 - **Superface Tools:** Simplified interface for CRM API interactions.
-- **Superface Specialist:** Specialized workflows built upon Superface for advanced use-cases.
+- **Superface Specialist:** Specialized workflows built upon Superface for advanced use cases.
+- **Superface Dynamic Specialist:** Self-navigating Superface agent for advanced use cases.
 - **Vibe coded with Cursor:** AI-generated tools optimized for CRM interactions.
 - **Composio:** Platform supporting multi-service integrations with emphasis on CRM processes.
 
