@@ -48,7 +48,7 @@ uv pip install .
 Run the evaluation for specified toolsets:
 
 ```bash
-python run.py --toolsets superface --toolsets superface_specialist --toolsets composio --toolsets vibecode --seed 42 --trials 10
+python run.py --toolsets superface superface_specialist superface_dynamic_specialist composio vibecode --seed 42 --trials 10
 ```
 
 To process results and compute evaluation metrics, execute:
