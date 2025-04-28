@@ -64,7 +64,7 @@ To process recorded results and compute evaluation metrics, execute `process.py`
 
 ```bash
 # Example: Evaluate all files under `{toolname}_toolset_2.jsonl`
-python run.py --toolsets superface superface_specialist superface_dynamic_specialist composio vibecode --ix 2
+python process.py --toolsets superface superface_specialist superface_dynamic_specialist composio vibecode --ix 2
 ```
 
 ## Results
