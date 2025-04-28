@@ -76,6 +76,10 @@ if __name__ == "__main__":
         else:
             print(f"- Results file {results_file} does not exist. Skipping.")
     
+    if (len(processed_result) == 0):
+        print("No results to process. Exiting.")
+        exit(1)
+
     csv_results = create_csv_pass_k(processed_result, run_id=run_id)
 
     try:
