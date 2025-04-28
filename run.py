@@ -41,7 +41,7 @@ def create_superface_specialiasts_toolset() -> Toolset:
     specialist_fd = superface.get(path='/api/specialists/hubspot', user_id="benchmark")
 
     return Toolset(
-        name="Superface Specialists Toolset",
+        name="Superface Specialist Toolset",
         tools=[
             Tool(
                 name=specialist_fd['name'],
@@ -57,7 +57,7 @@ def create_superface_dynamic_specialists_toolset() -> Toolset:
     specialist_fd = superface.get(path='/api/specialists/dynamic/hubspot', user_id="benchmark")
 
     return Toolset(
-        name="Superface Dynamic Specialists Toolset",
+        name="Superface Dynamic Specialist Toolset",
         tools=[
             Tool(
                 name=specialist_fd['name'],
