@@ -16,3 +16,5 @@ wheels/
 
 # generated files
 results/*.jsonl
+processed/**/*.json
+processed/**/*.csv

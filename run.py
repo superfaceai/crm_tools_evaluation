@@ -41,7 +41,7 @@ def create_superface_specialiasts_toolset() -> Toolset:
     specialist_fd = superface.get(path='/api/specialists/hubspot', user_id="benchmark")
 
     return Toolset(
-        name="Superface Specialists Toolset",
+        name="Superface Specialist Toolset",
         tools=[
             Tool(
                 name=specialist_fd['name'],
@@ -57,7 +57,7 @@ def create_superface_dynamic_specialists_toolset() -> Toolset:
     specialist_fd = superface.get(path='/api/specialists/dynamic/hubspot', user_id="benchmark")
 
     return Toolset(
-        name="Superface Dynamic Specialists Toolset",
+        name="Superface Dynamic Specialist Toolset",
         tools=[
             Tool(
                 name=specialist_fd['name'],
@@ -214,22 +214,24 @@ def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, see
             results.extend(result)
         write_results_to_file(toolset, results)
 
-if __name__ == "__main__":
-    toolset_creators = {
-        "superface": create_superface_toolset,
-        "superface_specialist": create_superface_specialiasts_toolset,
-        "superface_dynamic_specialist": create_superface_dynamic_specialists_toolset,
-        "composio": create_composio_toolset,
-        'vibecode': create_vibecode_toolset,
-    }
+toolset_creators = {
+    "superface": create_superface_toolset,
+    "superface_specialist": create_superface_specialiasts_toolset,
+    "superface_dynamic_specialist": create_superface_dynamic_specialists_toolset,
+    "composio": create_composio_toolset,
+    'vibecode': create_vibecode_toolset,
+}
 
+toolset_options = list(toolset_creators.keys())
+
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run CRM Tools Benchmark")
     parser.add_argument(
         "--toolsets",
         nargs="+",
-        choices=list(toolset_creators.keys()),
+        choices=toolset_options,
         required=True,
-        help=f"Specify one or more toolsets to run: {', '.join(toolset_creators.keys())}"
+        help=f"Specify one or more toolsets to run: {', '.join(toolset_options)}"
     )
     parser.add_argument(
         "--trials",
