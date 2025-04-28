@@ -46,16 +46,25 @@ uv pip install .
 
 ## Execution
 
-Run the evaluation for specified toolsets:
+Run the benchmark for specified toolsets:
+
+- `--toolsets`: List of toolsets you want to run the benchmark for
+- `--seed` *(optional)*: Specify a seed that is passed to LLMs (Default: none)
+- `--trials` *(optional)*: Specify how many times each toolset<>task pair should run (Default: 5)
 
 ```bash
 python run.py --toolsets superface superface_specialist superface_dynamic_specialist composio vibecode --seed 42 --trials 10
 ```
 
-To process results and compute evaluation metrics, execute:
+## Calculating Pass^k
+To process recorded results and compute evaluation metrics, execute `process.py` script with:
+
+- `--toolsets`: List of toolsets for which you want to evaluate the results
+- `--ix` *(optional)*: Use to specify index of result files you want to analyze. This is for files in format `{toolname}_toolset_{ix}.jsonl` that are created when the benchmark is ran multiple times (Default: no index)
 
 ```bash
-python process_results.py
+# Example: Evaluate all files under `{toolname}_toolset_2.jsonl`
+python run.py --toolsets superface superface_specialist superface_dynamic_specialist composio vibecode --ix 2
 ```
 
 ## Results
