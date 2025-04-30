@@ -3,8 +3,8 @@ import json
 from dotenv import load_dotenv
 from superface import Superface
 from superface.client.superface import SuperfaceAPI
-from composio_openai import ComposioToolSet, App, Tag, Action
-from typing import List, Optional
+from composio_openai import ComposioToolSet, Action
+from typing import List, Optional, TextIO
 from src.reset_hubspot import reset_hubspot
 from src.shared import Model, Task, Tool, Toolset, SolveResult
 from src.crm_agent import CRMAgent
@@ -72,7 +72,7 @@ def create_composio_toolset() -> Toolset:
     toolset = ComposioToolSet(api_key=os.getenv("COMPOSIO_API_KEY"))
 
     tools = toolset.get_tools(
-        # filtering by tags doesn't work
+        # filtering by tags doesn't work: https://github.com/ComposioHQ/composio/issues/1548
         # apps=[App.HUBSPOT],
         # tags=[Tag.HUBSPOT_CORE, Tag.HUBSPOT_BASIC],
         actions=[
@@ -114,23 +114,20 @@ def load_tasks(slice: Optional[slice] = None) -> List[Task]:
         tasks = tasks[slice]
     return tasks
 
-def solve_task(*, task: Task, toolset: Toolset, model: Model, trials_count: int, seed: Optional[int] = None) -> List[SolveResult]:
-    print(f"🛠️ Task {task.name}")
-
+def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, trials_count: int, seed: Optional[int] = None):
     agent = CRMAgent(
         model=model,
         tools=toolset
     )
 
-    results: List[SolveResult] = []
     for i in range(1, trials_count+1):
         try:
+            print(f"🛠️ Task {task.name} {i}/{trials_count}")
+
             print("🧹 Resetting CRM...")
             reset_hubspot()
 
-            print(f"🤖 Run {i}/{trials_count}")
-            result = agent.solve(task=task, seed=seed)
-            
+            result = agent.solve(task=task, seed=seed)            
             result.trial_idx = i
             result.trials_count = trials_count
 
@@ -138,13 +135,13 @@ def solve_task(*, task: Task, toolset: Toolset, model: Model, trials_count: int,
             result.crm_state = dump_hubspot()
 
             print("🧪 Evaluating task...")
-            result = evelauate_task(result=result)
+            result = evaluate_task(result=result)
 
             print(f"🔨 Verdict: {'👍' if result.verdict.verdict else '👎'}")
             print(f"      Reasoning: {result.verdict.reasoning}")
             print(f"      Confidence: {result.verdict.confidence}")
 
-            results.append(result)
+            write_result_to_file(file=file, result=result)
         except Exception as e:
             print(f"❌ Failed attempt: {e}")
             result = SolveResult(
@@ -157,17 +154,15 @@ def solve_task(*, task: Task, toolset: Toolset, model: Model, trials_count: int,
                 trials_count=trials_count,
                 error=str(e)
             )
-            continue
+            write_result_to_file(file=file, result=result)
 
-    return results
-
-def evelauate_task(result: SolveResult) -> SolveResult:
+def evaluate_task(result: SolveResult) -> SolveResult:
     evaluator = Evaluator()
     verdict = evaluator.eval(result=result)
     result.verdict = verdict
     return result
 
-def write_results_to_file(toolset: Toolset, results: List[SolveResult]):
+def open_results_file(toolset: Toolset) -> TextIO:
     base_dir = os.path.dirname(os.path.abspath(__file__))
     toolset_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in toolset.name.lower())
     results_file = os.path.join(base_dir, f"./results/{toolset_name}.jsonl")
@@ -186,10 +181,10 @@ def write_results_to_file(toolset: Toolset, results: List[SolveResult]):
             backup_file = os.path.join(base_dir, f"./results/{toolset_name}_{backup_index}.jsonl")
         os.rename(results_file, backup_file)
     
-    # Write results to the file
-    with open(results_file, "w") as f:
-        for result in results:
-            f.write(json.dumps(result.model_dump()) + "\n")
+    return open(results_file, "w")
+
+def write_result_to_file(file: TextIO, result: SolveResult):
+    file.write(json.dumps(result.model_dump()) + "\n") 
         
 def test_agent():
     toolset = create_superface_toolset()
@@ -208,11 +203,9 @@ def dump_hubspot_state():
 def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, seed: Optional[int] = None):    
     tasks = load_tasks()
     for toolset in toolsets:
-        results = []
-        for task in tasks:
-            result = solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count, seed=seed)    
-            results.extend(result)
-        write_results_to_file(toolset, results)
+        with open_results_file(toolset) as file:
+            for task in tasks[0:1]:
+                solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count, seed=seed, file=file)                
 
 toolset_creators = {
     "superface": create_superface_toolset,
