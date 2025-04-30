@@ -79,4 +79,5 @@ jobs:
           name: evaluation-results
           path: |
             results/*.jsonl
-            results/processed_results.txt
+            processed/*.json
+            processed/*.csv
