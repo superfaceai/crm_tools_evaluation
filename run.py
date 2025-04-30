@@ -6,7 +6,7 @@ from superface.client.superface import SuperfaceAPI
 from composio_openai import ComposioToolSet, Action
 from typing import List, Optional, TextIO
 from src.reset_hubspot import reset_hubspot
-from src.shared import Model, Task, Tool, Toolset, SolveResult
+from src.shared import Model, Task, Tool, Toolset, SolveResult, Verdict
 from src.crm_agent import CRMAgent
 from src.dump_hubspot import dump_hubspot
 from src.evaluator import Evaluator
@@ -152,7 +152,12 @@ def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, tria
                 success=False,
                 trial_idx=i,
                 trials_count=trials_count,
-                error=str(e)
+                error=str(e),
+                verdict=Verdict(
+                    verdict=False,
+                    reasoning="Error during task execution",
+                    confidence=1.0
+                )
             )
             write_result_to_file(file=file, result=result)
 
