@@ -64,7 +64,14 @@ jobs:
           HUBSPOT_API_KEY: ${{ secrets.HUBSPOT_API_KEY }}
 
       - name: Process results
-        run: python process_results.py > results/processed_results.txt
+        run: |
+          # Parse input toolsets and convert to CLI arguments
+          TOOLSET_ARG=""
+          for toolset in ${{ inputs.toolsets }}; do
+            TOOLSET_ARG="${TOOLSET_ARG} --toolsets ${toolset}"
+          done
+
+          python process.py ${TOOLSET_ARG}
 
       - name: Upload results
         uses: actions/upload-artifact@v4
