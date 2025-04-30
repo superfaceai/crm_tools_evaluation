@@ -36,9 +36,9 @@ jobs:
         run: |
           # Parse input toolsets and convert to CLI arguments
           TOOLSET_ARG=""
-          for toolset in ${{ inputs.toolsets }}; do
-            TOOLSET_ARG="${TOOLSET_ARG} --toolsets ${toolset}"
-          done
+          if [ -n "${{ inputs.toolsets }}" ]; then
+            TOOLSET_ARG="--toolsets ${{ inputs.toolsets }}"
+          fi
 
           # Trials amount
           TRIALS_ARG=""
@@ -67,9 +67,9 @@ jobs:
         run: |
           # Parse input toolsets and convert to CLI arguments
           TOOLSET_ARG=""
-          for toolset in ${{ inputs.toolsets }}; do
-            TOOLSET_ARG="${TOOLSET_ARG} --toolsets ${toolset}"
-          done
+          if [ -n "${{ inputs.toolsets }}" ]; then
+            TOOLSET_ARG="--toolsets ${{ inputs.toolsets }}"
+          fi
 
           python process.py ${TOOLSET_ARG}
 
