@@ -203,8 +203,9 @@ def dump_hubspot_state():
 def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, seed: Optional[int] = None):    
     tasks = load_tasks()
     for toolset in toolsets:
+        print(f"Running tasks for toolset: {toolset.name}")
         with open_results_file(toolset) as file:
-            for task in tasks[0:1]:
+            for task in tasks:
                 solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count, seed=seed, file=file)                
 
 toolset_creators = {
