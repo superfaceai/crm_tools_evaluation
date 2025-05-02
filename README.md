@@ -67,23 +67,6 @@ To process recorded results and compute evaluation metrics, execute `process.py`
 python process.py --toolsets superface superface_specialist superface_dynamic_specialist composio vibecode --ix 2
 ```
 
-## Results
-
-The following table summarizes the Pass^k scores for each toolset, indicating the proportion of successful outcomes within k attempts:
-
-| k | Superface Tools | Superface Specialist | Vibe coded with Cursor | Composio |
-|---|-----------------|----------------------|------------------------|----------|
-| 1 | 0.3000          | 0.3667               | 0.3333                 | 0.2500   |
-| 2 | 0.1630          | 0.2926               | 0.2333                 | 0.1889   |
-| 3 | 0.0972          | 0.2500               | 0.1708                 | 0.1722   |
-| 4 | 0.0603          | 0.2230               | 0.1286                 | 0.1675   |
-| 5 | 0.0377          | 0.2037               | 0.0972                 | 0.1667   |
-| 6 | 0.0222          | 0.1889               | 0.0722                 | 0.1667   |
-| 7 | 0.0111          | 0.1778               | 0.0514                 | 0.1667   |
-| 8 | 0.0037          | 0.1704               | 0.0333                 | 0.1667   |
-| 9 | 0.0000          | 0.1667               | 0.0167                 | 0.1667   |
-|10 | 0.0000          | 0.1667               | 0.0000                 | 0.1667   |
-
 ## Reference Benchmarks
 
 This evaluation is inspired by and comparable to the following benchmarks:
