@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 from dotenv import load_dotenv
 from superface import Superface
 from superface.client.superface import SuperfaceAPI
@@ -11,6 +12,7 @@ from src.crm_agent import CRMAgent
 from src.dump_hubspot import dump_hubspot
 from src.evaluator import Evaluator
 from src.vibecode_toolset import create_vibecode_toolset
+from src.mcp_toolset import MCPToolsetManager
 import argparse
 
 load_dotenv()
@@ -101,6 +103,20 @@ def create_composio_toolset() -> Toolset:
         ]
     )
     
+def create_hubspot_mcp_toolset() -> Toolset:
+    async def create():
+        manager = MCPToolsetManager()
+        toolset = await manager.create_mcp_toolset(
+            npm_package="@hubspot/mcp-server",
+            name="HubSpot MCP Toolset",
+            env={
+                "PRIVATE_APP_ACCESS_TOKEN": os.getenv("HUBSPOT_API_KEY"),
+            }
+        )
+        toolset.manager = manager
+        return toolset
+    
+    return asyncio.run(create())
 
 def load_tasks(slice: Optional[slice] = None) -> List[Task]:
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -219,6 +235,7 @@ toolset_creators = {
     "superface_dynamic_specialist": create_superface_dynamic_specialists_toolset,
     "composio": create_composio_toolset,
     'vibecode': create_vibecode_toolset,
+    'hubspot_mcp': create_hubspot_mcp_toolset,
 }
 
 toolset_options = list(toolset_creators.keys())
@@ -248,8 +265,16 @@ if __name__ == "__main__":
 
     selected_toolsets = [toolset_creators[toolset]() for toolset in args.toolsets]
 
-    run(
-        toolsets=selected_toolsets,
-        trials_count=args.trials,
-        seed=args.seed
-    )
+    try:
+        run(
+            toolsets=selected_toolsets,
+            trials_count=args.trials,
+            seed=args.seed
+        )
+    finally:
+        async def close_managers():
+            for toolset in selected_toolsets:
+                if hasattr(toolset, 'manager') and hasattr(toolset.manager, 'close'):
+                    await toolset.manager.close()
+
+        asyncio.run(close_managers())

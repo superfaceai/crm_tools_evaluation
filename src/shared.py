@@ -73,7 +73,8 @@ class Tool(abc.ABC):
         }
     
     def run(self, arguments: Dict[str, Any]):
-        return self.handler(arguments)
+        import asyncio
+        return asyncio.run(self.handler(arguments))
 
 class Toolset:
     name: str
