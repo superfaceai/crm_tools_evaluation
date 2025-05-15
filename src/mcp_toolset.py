@@ -4,30 +4,41 @@ import os
 from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from typing import Optional
 from .shared import Tool, Toolset
 
-class MCPToolsetManager:
-    def __init__(self):
-        self.stack = AsyncExitStack()
 
-    async def create_mcp_toolset(self, *, npm_package: str, name: str, env: dict[str, str] | None):
-        await self.stack.__aenter__()  # Manually enter the AsyncExitStack
+class MCPToolset(Toolset):
+    def __init__(self, *, name: str, npm_package: str, env: dict[str, str] | None):
+        self.name = name
+        self.env = env
+        self.npm_package = npm_package
 
+        self.session: Optional[ClientSession] = None
+        self.exit_stack = AsyncExitStack()
+
+        super().__init__(name=name, tools=[])
+
+    async def connect(self):
         server_params = StdioServerParameters(
             command="npx",
-            args=[npm_package],
-            env=env
+            args=[self.npm_package],
+            env=self.env
         )
 
-        client = await self.stack.enter_async_context(stdio_client(server_params))
-        session = await self.stack.enter_async_context(ClientSession(*client))
+        stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
+        self.stdio, self.write = stdio_transport
+        self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
 
-        # Initialize the connection
-        await session.initialize()
-        mcp_tools = (await session.list_tools()).tools
+        await self.session.initialize()
 
-        tools = []
-        for tool in mcp_tools:
+        response = await self.session.list_tools()
+
+        self.tools = []
+        for tool in response.tools:
+            if tool.name == "hubspot-search-objects":
+                continue
+
             tool_name = tool.name
             tool_description = tool.description
             tool_parameters = tool.inputSchema
@@ -35,13 +46,14 @@ class MCPToolsetManager:
             async def handle_tool_request(args: str, tool_name=tool_name) -> any:
                 try:
                     args_dict = json.loads(args)
-                    return await session.call_tool(tool_name, args_dict)
+                    result = await self.session.call_tool(tool_name, args_dict)
+                    return result.model_dump_json()
                 except json.JSONDecodeError:
                     return {"error": "Invalid JSON arguments"}
                 except Exception as e:
                     raise e
 
-            tools.append(
+            self.tools.append(
                 Tool(
                     name=tool_name,
                     description=tool_description,
@@ -50,34 +62,28 @@ class MCPToolsetManager:
                 )
             )
 
-        return Toolset(
-            name=name,
-            tools=tools,
-        )
-
     async def close(self):
-        await self.stack.__aexit__(None, None, None)  # Manually exit the AsyncExitStack
+        await self.exit_stack.aclose()
 
 
 async def test_mcp():
-    manager = MCPToolsetManager()
+    toolset = MCPToolset(
+        name="HubSpot MCP Toolset",
+        npm_package="@hubspot/mcp-server",
+        env={
+            "PRIVATE_APP_ACCESS_TOKEN": os.getenv("HUBSPOT_API_KEY"),
+        }
+    )
     try:
-        toolset = await manager.create_mcp_toolset(
-            npm_package="@hubspot/mcp-server",
-            name="HubSpot MCP Toolset",
-            env={
-                "PRIVATE_APP_ACCESS_TOKEN": os.getenv("HUBSPOT_API_KEY"),
-            }
-        )
-        print("toolset", toolset)
+        await toolset.connect()
+        print("Connected to MCP Toolset")
 
-        print("tool", toolset.tools[0])
-        print("tool", toolset.tools[0].parameters)
+        tool = toolset.tools[0]
+        result = await tool.run('{}')
 
-        result = await toolset.tools[0].handler('{}')
-        print("result", result)
+        print(f"Tool result: {result}")
     finally:
-        await manager.close()  # Ensure resources are cleaned up
+        await toolset.close()
 
 
 if __name__ == "__main__":
