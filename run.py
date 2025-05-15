@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 from dotenv import load_dotenv
 from superface import Superface
 from superface.client.superface import SuperfaceAPI
@@ -11,6 +12,7 @@ from src.crm_agent import CRMAgent
 from src.dump_hubspot import dump_hubspot
 from src.evaluator import Evaluator
 from src.vibecode_toolset import create_vibecode_toolset
+from src.mcp_toolset import MCPToolset
 import argparse
 
 load_dotenv()
@@ -101,6 +103,16 @@ def create_composio_toolset() -> Toolset:
         ]
     )
     
+async def create_hubspot_mcp_toolset() -> Toolset:
+    toolset = MCPToolset(
+        npm_package="@hubspot/mcp-server",
+        name="HubSpot MCP Toolset",
+        env={
+            "PRIVATE_APP_ACCESS_TOKEN": os.getenv("HUBSPOT_API_KEY"),
+        }
+    )
+    await toolset.connect()
+    return toolset
 
 def load_tasks(slice: Optional[slice] = None) -> List[Task]:
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -114,7 +126,7 @@ def load_tasks(slice: Optional[slice] = None) -> List[Task]:
         tasks = tasks[slice]
     return tasks
 
-def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, trials_count: int, seed: Optional[int] = None):
+async def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, trials_count: int, seed: Optional[int] = None):
     agent = CRMAgent(
         model=model,
         tools=toolset
@@ -127,7 +139,7 @@ def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, tria
             print("🧹 Resetting CRM...")
             reset_hubspot()
 
-            result = agent.solve(task=task, seed=seed)            
+            result = await agent.solve(task=task, seed=seed)            
             result.trial_idx = i
             result.trials_count = trials_count
 
@@ -205,13 +217,13 @@ def dump_hubspot_state():
     hubspot_state = dump_hubspot()
     print(f"HubSpot State: {hubspot_state}")
 
-def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, seed: Optional[int] = None):    
+async def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, seed: Optional[int] = None):    
     tasks = load_tasks()
     for toolset in toolsets:
         print(f"Running tasks for toolset: {toolset.name}")
         with open_results_file(toolset) as file:
             for task in tasks:
-                solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count, seed=seed, file=file)                
+                await solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count, seed=seed, file=file)                
 
 toolset_creators = {
     "superface": create_superface_toolset,
@@ -219,11 +231,12 @@ toolset_creators = {
     "superface_dynamic_specialist": create_superface_dynamic_specialists_toolset,
     "composio": create_composio_toolset,
     'vibecode': create_vibecode_toolset,
+    'hubspot_mcp': create_hubspot_mcp_toolset,
 }
 
 toolset_options = list(toolset_creators.keys())
 
-if __name__ == "__main__":
+async def main():
     parser = argparse.ArgumentParser(description="Run CRM Tools Benchmark")
     parser.add_argument(
         "--toolsets",
@@ -244,12 +257,21 @@ if __name__ == "__main__":
         default=None,
         help="Specify the seed (default: None)"
     )
+
     args = parser.parse_args()
+    selected_toolsets = [await toolset_creators[toolset]() for toolset in args.toolsets]
 
-    selected_toolsets = [toolset_creators[toolset]() for toolset in args.toolsets]
-
-    run(
-        toolsets=selected_toolsets,
-        trials_count=args.trials,
-        seed=args.seed
-    )
+    try:
+        await run(
+            toolsets=selected_toolsets,
+            trials_count=args.trials,
+            seed=args.seed
+        )
+    finally:
+        for toolset in selected_toolsets:
+            if hasattr(toolset, 'close'):
+                print(f"Closing toolset: {toolset.name}")
+                await toolset.close()
+                
+if __name__ == "__main__":
+    asyncio.run(main())
