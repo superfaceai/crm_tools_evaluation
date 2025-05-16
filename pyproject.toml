@@ -12,5 +12,6 @@ dependencies = [
   "litellm",
   "superface",
   "requests",
-  "composio-openai"
+  "composio-openai",
+  "simple-salesforce"
 ]

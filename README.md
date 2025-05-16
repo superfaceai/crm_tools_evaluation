@@ -51,6 +51,7 @@ Run the benchmark for specified toolsets:
 - `--toolsets`: List of toolsets you want to run the benchmark for
 - `--seed` *(optional)*: Specify a seed that is passed to LLMs (Default: none)
 - `--trials` *(optional)*: Specify how many times each toolset<>task pair should run (Default: 5)
+- `--crm`: hubspot or salesforce (Default: hubspot)
 
 ```bash
 python run.py --toolsets superface superface_specialist superface_dynamic_specialist composio vibecode --seed 42 --trials 10
