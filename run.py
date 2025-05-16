@@ -6,9 +6,11 @@ from superface.client.superface import SuperfaceAPI
 from composio_openai import ComposioToolSet, Action
 from typing import List, Optional, TextIO
 from src.reset_hubspot import reset_hubspot
+from src.reset_salesforce import reset_salesforce
 from src.shared import Model, Task, Tool, Toolset, SolveResult, Verdict
 from src.crm_agent import CRMAgent
 from src.dump_hubspot import dump_hubspot
+from src.dump_salesforce import dump_salesforce
 from src.evaluator import Evaluator
 from src.vibecode_toolset import create_vibecode_toolset
 import argparse
@@ -36,46 +38,54 @@ def create_superface_toolset() -> Toolset:
         ]
     )
 
-def create_superface_specialiasts_toolset() -> Toolset:
+def create_superface_specialiasts_toolset(crm: str = "hubspot") -> Toolset:
     superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url="https://pod.superface.ai")
-    specialist_fd = superface.get(path='/api/specialists/hubspot', user_id="benchmark")
-
+    user_id = "benchmark"
+    if crm == "hubspot":
+        path = '/api/specialists/hubspot'
+    elif crm == "salesforce":
+        path = '/api/specialists/salesforce'
+    else:
+        raise ValueError(f"Unsupported CRM: {crm}")
+    specialist_fd = superface.get(path=path, user_id=user_id)
     return Toolset(
-        name="Superface Specialist Toolset",
+        name=f"Superface Specialist Toolset ({crm})",
         tools=[
             Tool(
                 name=specialist_fd['name'],
                 description=specialist_fd['description'],
                 parameters=specialist_fd['parameters'],
-                handler=lambda arguments: superface.post(path='/api/specialists/hubspot', data=json.loads(arguments), user_id="benchmark"),
+                handler=lambda arguments: superface.post(path=path, data=json.loads(arguments), user_id=user_id),
             )
         ]
     )
 
-def create_superface_dynamic_specialists_toolset() -> Toolset:
+def create_superface_dynamic_specialists_toolset(crm: str = "hubspot") -> Toolset:
     superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url="https://pod.superface.ai")
-    specialist_fd = superface.get(path='/api/specialists/dynamic/hubspot', user_id="benchmark")
-
+    user_id = "benchmark"
+    if crm == "hubspot":
+        path = '/api/specialists/dynamic/hubspot'
+    elif crm == "salesforce":
+        path = '/api/specialists/dynamic/salesforce'
+    else:
+        raise ValueError(f"Unsupported CRM: {crm}")
+    specialist_fd = superface.get(path=path, user_id=user_id)
     return Toolset(
-        name="Superface Dynamic Specialist Toolset",
+        name=f"Superface Dynamic Specialist Toolset ({crm})",
         tools=[
             Tool(
                 name=specialist_fd['name'],
                 description=specialist_fd['description'],
                 parameters=specialist_fd['parameters'],
-                handler=lambda arguments: superface.post(path='/api/specialists/dynamic/hubspot', data=json.loads(arguments), user_id="benchmark"),
+                handler=lambda arguments: superface.post(path=path, data=json.loads(arguments), user_id=user_id),
             )
         ]
     )
 
-def create_composio_toolset() -> Toolset:
+def create_composio_toolset(crm: str = "hubspot") -> Toolset:
     toolset = ComposioToolSet(api_key=os.getenv("COMPOSIO_API_KEY"))
-
-    tools = toolset.get_tools(
-        # filtering by tags doesn't work: https://github.com/ComposioHQ/composio/issues/1548
-        # apps=[App.HUBSPOT],
-        # tags=[Tag.HUBSPOT_CORE, Tag.HUBSPOT_BASIC],
-        actions=[
+    if crm == "hubspot":
+        actions = [
             Action.HUBSPOT_CREATE_CONTACT_OBJECT_WITH_PROPERTIES, 
             Action.HUBSPOT_CREATE_COMPANY_OBJECT, 
             Action.HUBSPOT_SEARCH_CONTACTS_BY_CRITERIA, 
@@ -85,11 +95,37 @@ def create_composio_toolset() -> Toolset:
             Action.HUBSPOT_READ_PROPERTY_GROUPS_FOR_OBJECT_TYPE,
             Action.HUBSPOT_LIST_ASSOCIATION_TYPES,
             Action.HUBSPOT_CREATE_BATCH_OF_OBJECTS,
-        ],
-    )
-    
+        ]
+    elif crm == "salesforce":
+        actions = [
+            Action.SALESFORCE_CREATE_LEAD_WITH_SPECIFIED_CONTENT_TYPE,
+            Action.SALESFORCE_CREATE_NEW_CONTACT_WITH_JSON_HEADER,
+            Action.SALESFORCE_CREATE_NOTE_RECORD_WITH_CONTENT_TYPE_HEADER,
+            Action.SALESFORCE_CREATE_OPPORTUNITY_RECORD,
+            Action.SALESFORCE_DELETE_A_LEAD_OBJECT_BY_ITS_ID,
+            Action.SALESFORCE_FETCH_ACCOUNT_DETAILS_BY_ID_WITH_CONDITIONAL_QUERIES,
+            Action.SALESFORCE_FETCH_MODIFIED_OR_UNMODIFIED_SOBJECTS,
+            Action.SALESFORCE_QUERY_REPORT,
+            Action.SALESFORCE_RETRIEVE_ACCOUNT_DATA_AND_ERROR_RESPONSES,
+            Action.SALESFORCE_RETRIEVE_CONTACT_INFO_WITH_STANDARD_RESPONSES,
+            Action.SALESFORCE_RETRIEVE_LEAD_DATA_WITH_VARIOUS_RESPONSES,
+            Action.SALESFORCE_RETRIEVE_LEAD_DETAILS_BY_ID_WITH_CONDITIONAL_SUPPORT,
+            Action.SALESFORCE_RETRIEVE_NOTE_BY_ID_WITH_OPTIONAL_FIELDS_AND_TIME_CONDITIONS,
+            Action.SALESFORCE_RETRIEVE_NOTE_OBJECT_INFORMATION,
+            Action.SALESFORCE_RETRIEVE_OPPORTUNITIES_DATA,
+            Action.SALESFORCE_RETRIEVE_OPPORTUNITY_BY_ID_WITH_OPTIONAL_FIELDS,
+            Action.SALESFORCE_RETRIEVE_SPECIFIC_CONTACT_BY_ID,
+            Action.SALESFORCE_UPDATE_ACCOUNT_OBJECT_BY_ID,
+            Action.SALESFORCE_UPDATE_CONTACT_BY_ID,
+            Action.SALESFORCE_UPDATE_LEAD_BY_ID_WITH_JSON_PAYLOAD,
+            Action.SALESFORCE_UPDATE_OPPORTUNITY_BY_ID,
+            Action.SALESFORCE_UPDATE_SPECIFIC_NOTE_BY_ID
+        ]
+    else:
+        raise ValueError(f"Unsupported CRM: {crm}")
+    tools = toolset.get_tools(actions=actions)
     return Toolset(
-        name="Composio Toolset",
+        name=f"Composio Toolset ({crm})",
         tools=[
             Tool(
                 name=tool['function']['name'],
@@ -114,7 +150,7 @@ def load_tasks(slice: Optional[slice] = None) -> List[Task]:
         tasks = tasks[slice]
     return tasks
 
-def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, trials_count: int, seed: Optional[int] = None):
+def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, trials_count: int, seed: Optional[int] = None, crm: str = "hubspot"):
     agent = CRMAgent(
         model=model,
         tools=toolset
@@ -125,14 +161,24 @@ def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, tria
             print(f"🛠️ Task {task.name} {i}/{trials_count}")
 
             print("🧹 Resetting CRM...")
-            reset_hubspot()
+            if crm == "hubspot":
+                reset_hubspot()
+            elif crm == "salesforce":
+                reset_salesforce()
+            else:
+                raise ValueError(f"Unsupported CRM: {crm}")
 
             result = agent.solve(task=task, seed=seed)            
             result.trial_idx = i
             result.trials_count = trials_count
 
             print("🗂️ Dumping CRM state...")
-            result.crm_state = dump_hubspot()
+            if crm == "hubspot":
+                result.crm_state = dump_hubspot()
+            elif crm == "salesforce":
+                result.crm_state = dump_salesforce()
+            else:
+                raise ValueError(f"Unsupported CRM: {crm}")
 
             print("🧪 Evaluating task...")
             result = evaluate_task(result=result)
@@ -205,13 +251,13 @@ def dump_hubspot_state():
     hubspot_state = dump_hubspot()
     print(f"HubSpot State: {hubspot_state}")
 
-def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, seed: Optional[int] = None):    
+def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, seed: Optional[int] = None, crm: str = "hubspot"):    
     tasks = load_tasks()
     for toolset in toolsets:
         print(f"Running tasks for toolset: {toolset.name}")
         with open_results_file(toolset) as file:
             for task in tasks:
-                solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count, seed=seed, file=file)                
+                solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count, seed=seed, file=file, crm=crm)                
 
 toolset_creators = {
     "superface": create_superface_toolset,
@@ -233,6 +279,13 @@ if __name__ == "__main__":
         help=f"Specify one or more toolsets to run: {', '.join(toolset_options)}"
     )
     parser.add_argument(
+        "--crm",
+        type=str,
+        default="hubspot",
+        choices=["hubspot", "salesforce"],
+        help="Specify the CRM to use (default: hubspot)"
+    )
+    parser.add_argument(
         "--trials",
         type=int,
         default=5,
@@ -246,10 +299,15 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    selected_toolsets = [toolset_creators[toolset]() for toolset in args.toolsets]
+    selected_toolsets = [
+        toolset_creators[toolset](crm=args.crm) if toolset in ["superface", "superface_specialist", "superface_dynamic_specialist", "composio"]
+        else toolset_creators[toolset]()
+        for toolset in args.toolsets
+    ]
 
     run(
         toolsets=selected_toolsets,
         trials_count=args.trials,
-        seed=args.seed
+        seed=args.seed,
+        crm=args.crm
     )
