@@ -164,6 +164,7 @@ async def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model
                 success=False,
                 trial_idx=i,
                 trials_count=trials_count,
+                seed=seed,
                 error=str(e),
                 verdict=Verdict(
                     verdict=False,
