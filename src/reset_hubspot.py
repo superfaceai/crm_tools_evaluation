@@ -35,7 +35,6 @@ def delete_objects(endpoint, ids):
     for object_id in ids:
         del_url = f"{BASE_URL}{endpoint}/{object_id}"
         requests.delete(del_url, headers=HEADERS)
-        time.sleep(0.1)  # avoid rate limits
 
 # === Reset Steps ===
 
@@ -50,6 +49,10 @@ def delete_all_companies():
 def delete_all_deals():
     deal_ids = get_all_ids("/crm/v3/objects/deals")
     delete_objects("/crm/v3/objects/deals", deal_ids)
+
+def delete_tasks():
+    tasks_ids = get_all_ids("/crm/v3/objects/tasks")
+    delete_objects("/crm/v3/objects/tasks", tasks_ids)
 
 def create_company(name, domain):
     data = {"properties": {"name": name, "domain": domain}}
@@ -97,10 +100,19 @@ def associate_deal_to_contact(deal_id, contact_id):
 def reset_hubspot(quiet=True):
     if not quiet:
         print("🚨 Deleting existing data...")
-        
+
+    if not quiet:
+        print("🗑️ Deleting contacts...")
     delete_all_contacts()
+    if not quiet:
+        print("🗑️ Deleting companies...")
     delete_all_companies()
+    if not quiet:
+        print("🗑️ Deleting deals...")
     delete_all_deals()
+    if not quiet:
+        print("🗑️ Deleting tasks...")
+    delete_tasks()
 
     if not quiet:
         print("📤 Loading initial data...")
@@ -143,4 +155,4 @@ def reset_hubspot(quiet=True):
         print("✔️ Reset complete!")
 
 if __name__ == "__main__":
-    reset_hubspot()
+    reset_hubspot(quiet=False)

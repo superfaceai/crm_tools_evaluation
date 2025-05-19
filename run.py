@@ -172,6 +172,7 @@ async def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model
                     confidence=1.0
                 )
             )
+            result.crm_state = dump_hubspot()
             write_result_to_file(file=file, result=result)
 
 def evaluate_task(result: SolveResult) -> SolveResult:
