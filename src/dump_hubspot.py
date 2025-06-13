@@ -1,6 +1,9 @@
+from dotenv import load_dotenv
 import os
 import requests
 from .shared import CrmState, CrmStateEngagements
+
+load_dotenv()
 
 # 🔧 CONFIGURATION
 HUBSPOT_API_KEY = os.getenv("HUBSPOT_API_KEY")
@@ -121,3 +124,8 @@ def get_associations(object_type, object_id, to_object_type):
     }
     data = get(endpoint, params)
     return data 
+
+if __name__ == "__main__":
+    print("Dumping HubSpot state...")
+    state = dump_hubspot()
+    print(state)

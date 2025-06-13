@@ -72,8 +72,8 @@ class Tool(abc.ABC):
             }
         }
     
-    def run(self, arguments: Dict[str, Any]):
-        return self.handler(arguments)
+    async def run(self, arguments: Dict[str, Any]):
+        return await self.handler(arguments)
 
 class Toolset:
     name: str

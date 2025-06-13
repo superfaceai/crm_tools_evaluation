@@ -13,7 +13,7 @@ class CRMAgent(Agent):
         self.model = model
         self.tools = tools
 
-    def solve(self, task, *, max_num_steps = 30, seed: Optional[int] = None) -> SolveResult:
+    async def solve(self, task, *, max_num_steps = 30, seed: Optional[int] = None) -> SolveResult:
         messages: List[Dict[str, Any]] = [
             { "role": "system", "content": CRMAgent.instructions },
             { "role": "user", "content": task.prompt }
@@ -44,8 +44,7 @@ class CRMAgent(Agent):
                         (t for t in self.tools if t.name == tool_name), None
                     )
                     if tool:
-                        tool_response = tool.run(tool_args)
-
+                        tool_response = await tool.run(tool_args)
                         messages.append({
                             "role": "tool",
                             "tool_call_id": tool_call["id"],

@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 from dotenv import load_dotenv
 from superface import Superface
 from superface.client.superface import SuperfaceAPI
@@ -11,16 +12,18 @@ from src.crm_agent import CRMAgent
 from src.dump_hubspot import dump_hubspot
 from src.evaluator import Evaluator
 from src.vibecode_toolset import create_vibecode_toolset
+from src.mcp_toolset import MCPToolset
 import argparse
 
 load_dotenv()
-def create_empty_toolset() -> Toolset:
+
+async def create_empty_toolset() -> Toolset:
     return Toolset(
         name="Empty Toolset",
         tools=[]
     )
 
-def create_superface_toolset() -> Toolset:
+async def create_superface_toolset() -> Toolset:
     superface = Superface(api_key=os.getenv("SUPERFACE_API_KEY"))
     sf_tools = superface.get_tools(user_id="benchmark")
     return Toolset(
@@ -36,8 +39,8 @@ def create_superface_toolset() -> Toolset:
         ]
     )
 
-def create_superface_specialiasts_toolset() -> Toolset:
-    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url="https://pod.superface.ai")
+async def create_superface_specialiasts_toolset() -> Toolset:
+    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url=os.getenv("SUPERFACE_URL"))
     specialist_fd = superface.get(path='/api/specialists/hubspot', user_id="benchmark")
 
     return Toolset(
@@ -52,8 +55,30 @@ def create_superface_specialiasts_toolset() -> Toolset:
         ]
     )
 
-def create_superface_dynamic_specialists_toolset() -> Toolset:
-    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url="https://pod.superface.ai")
+async def create_superface_specialiast_mcp_toolset() -> Toolset:
+    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url=os.getenv("SUPERFACE_URL"))
+    specialist_fd = superface.get(path='/api/specialists/hubspot_mcp', user_id="benchmark")
+
+    print("Api key:", os.getenv("SUPERFACE_API_KEY"))
+    print("Base URL:", os.getenv("SUPERFACE_URL"))
+
+    async def handler(arguments):
+        return superface.post(path='/api/specialists/hubspot_mcp', data=json.loads(arguments), user_id="benchmark")
+
+    return Toolset(
+        name="Superface Specialist MCP Toolset",
+        tools=[
+            Tool(
+                name=specialist_fd['name'],
+                description=specialist_fd['description'],
+                parameters=specialist_fd['parameters'],
+                handler=handler,
+            )
+        ]
+    )
+
+async def create_superface_dynamic_specialists_toolset() -> Toolset:
+    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url=os.getenv("SUPERFACE_URL"))
     specialist_fd = superface.get(path='/api/specialists/dynamic/hubspot', user_id="benchmark")
 
     return Toolset(
@@ -68,7 +93,7 @@ def create_superface_dynamic_specialists_toolset() -> Toolset:
         ]
     )
 
-def create_composio_toolset() -> Toolset:
+async def create_composio_toolset() -> Toolset:
     toolset = ComposioToolSet(api_key=os.getenv("COMPOSIO_API_KEY"))
 
     tools = toolset.get_tools(
@@ -101,6 +126,16 @@ def create_composio_toolset() -> Toolset:
         ]
     )
     
+async def create_hubspot_mcp_toolset() -> Toolset:
+    toolset = MCPToolset(
+        npm_package="@hubspot/mcp-server",
+        name="HubSpot MCP Toolset",
+        env={
+            "PRIVATE_APP_ACCESS_TOKEN": os.getenv("HUBSPOT_API_KEY"),
+        }
+    )
+    await toolset.connect()
+    return toolset
 
 def load_tasks(slice: Optional[slice] = None) -> List[Task]:
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -114,7 +149,7 @@ def load_tasks(slice: Optional[slice] = None) -> List[Task]:
         tasks = tasks[slice]
     return tasks
 
-def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, trials_count: int, seed: Optional[int] = None):
+async def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, trials_count: int, seed: Optional[int] = None):
     agent = CRMAgent(
         model=model,
         tools=toolset
@@ -127,7 +162,7 @@ def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, tria
             print("🧹 Resetting CRM...")
             reset_hubspot()
 
-            result = agent.solve(task=task, seed=seed)            
+            result = await agent.solve(task=task, seed=seed)            
             result.trial_idx = i
             result.trials_count = trials_count
 
@@ -152,6 +187,7 @@ def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, tria
                 success=False,
                 trial_idx=i,
                 trials_count=trials_count,
+                seed=seed,
                 error=str(e),
                 verdict=Verdict(
                     verdict=False,
@@ -159,6 +195,7 @@ def solve_task(*, file: TextIO, task: Task, toolset: Toolset, model: Model, tria
                     confidence=1.0
                 )
             )
+            result.crm_state = dump_hubspot()
             write_result_to_file(file=file, result=result)
 
 def evaluate_task(result: SolveResult) -> SolveResult:
@@ -205,25 +242,27 @@ def dump_hubspot_state():
     hubspot_state = dump_hubspot()
     print(f"HubSpot State: {hubspot_state}")
 
-def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, seed: Optional[int] = None):    
+async def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4o, seed: Optional[int] = None):    
     tasks = load_tasks()
     for toolset in toolsets:
         print(f"Running tasks for toolset: {toolset.name}")
         with open_results_file(toolset) as file:
             for task in tasks:
-                solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count, seed=seed, file=file)                
+                await solve_task(task=task, toolset=toolset, model=model, trials_count=trials_count, seed=seed, file=file)                
 
 toolset_creators = {
     "superface": create_superface_toolset,
     "superface_specialist": create_superface_specialiasts_toolset,
+    "superface_specialist_mcp": create_superface_specialiast_mcp_toolset,
     "superface_dynamic_specialist": create_superface_dynamic_specialists_toolset,
     "composio": create_composio_toolset,
     'vibecode': create_vibecode_toolset,
+    'hubspot_mcp': create_hubspot_mcp_toolset,
 }
 
 toolset_options = list(toolset_creators.keys())
 
-if __name__ == "__main__":
+async def main():
     parser = argparse.ArgumentParser(description="Run CRM Tools Benchmark")
     parser.add_argument(
         "--toolsets",
@@ -244,12 +283,21 @@ if __name__ == "__main__":
         default=None,
         help="Specify the seed (default: None)"
     )
+
     args = parser.parse_args()
+    selected_toolsets = [await toolset_creators[toolset]() for toolset in args.toolsets]
 
-    selected_toolsets = [toolset_creators[toolset]() for toolset in args.toolsets]
-
-    run(
-        toolsets=selected_toolsets,
-        trials_count=args.trials,
-        seed=args.seed
-    )
+    try:
+        await run(
+            toolsets=selected_toolsets,
+            trials_count=args.trials,
+            seed=args.seed
+        )
+    finally:
+        for toolset in selected_toolsets:
+            if hasattr(toolset, 'close'):
+                print(f"Closing toolset: {toolset.name}")
+                await toolset.close()
+                
+if __name__ == "__main__":
+    asyncio.run(main())
