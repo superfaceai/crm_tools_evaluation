@@ -16,13 +16,14 @@ from src.mcp_toolset import MCPToolset
 import argparse
 
 load_dotenv()
-def create_empty_toolset() -> Toolset:
+
+async def create_empty_toolset() -> Toolset:
     return Toolset(
         name="Empty Toolset",
         tools=[]
     )
 
-def create_superface_toolset() -> Toolset:
+async def create_superface_toolset() -> Toolset:
     superface = Superface(api_key=os.getenv("SUPERFACE_API_KEY"))
     sf_tools = superface.get_tools(user_id="benchmark")
     return Toolset(
@@ -38,8 +39,8 @@ def create_superface_toolset() -> Toolset:
         ]
     )
 
-def create_superface_specialiasts_toolset() -> Toolset:
-    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url="https://pod.superface.ai")
+async def create_superface_specialiasts_toolset() -> Toolset:
+    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url=os.getenv("SUPERFACE_URL"))
     specialist_fd = superface.get(path='/api/specialists/hubspot', user_id="benchmark")
 
     return Toolset(
@@ -54,8 +55,30 @@ def create_superface_specialiasts_toolset() -> Toolset:
         ]
     )
 
-def create_superface_dynamic_specialists_toolset() -> Toolset:
-    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url="https://pod.superface.ai")
+async def create_superface_specialiast_mcp_toolset() -> Toolset:
+    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url=os.getenv("SUPERFACE_URL"))
+    specialist_fd = superface.get(path='/api/specialists/hubspot_mcp', user_id="benchmark")
+
+    print("Api key:", os.getenv("SUPERFACE_API_KEY"))
+    print("Base URL:", os.getenv("SUPERFACE_URL"))
+
+    async def handler(arguments):
+        return superface.post(path='/api/specialists/hubspot_mcp', data=json.loads(arguments), user_id="benchmark")
+
+    return Toolset(
+        name="Superface Specialist MCP Toolset",
+        tools=[
+            Tool(
+                name=specialist_fd['name'],
+                description=specialist_fd['description'],
+                parameters=specialist_fd['parameters'],
+                handler=handler,
+            )
+        ]
+    )
+
+async def create_superface_dynamic_specialists_toolset() -> Toolset:
+    superface = SuperfaceAPI(api_key=os.getenv("SUPERFACE_API_KEY"), base_url=os.getenv("SUPERFACE_URL"))
     specialist_fd = superface.get(path='/api/specialists/dynamic/hubspot', user_id="benchmark")
 
     return Toolset(
@@ -70,7 +93,7 @@ def create_superface_dynamic_specialists_toolset() -> Toolset:
         ]
     )
 
-def create_composio_toolset() -> Toolset:
+async def create_composio_toolset() -> Toolset:
     toolset = ComposioToolSet(api_key=os.getenv("COMPOSIO_API_KEY"))
 
     tools = toolset.get_tools(
@@ -230,6 +253,7 @@ async def run(*, toolsets: List[Toolset], trials_count: int, model = Model.GPT_4
 toolset_creators = {
     "superface": create_superface_toolset,
     "superface_specialist": create_superface_specialiasts_toolset,
+    "superface_specialist_mcp": create_superface_specialiast_mcp_toolset,
     "superface_dynamic_specialist": create_superface_dynamic_specialists_toolset,
     "composio": create_composio_toolset,
     'vibecode': create_vibecode_toolset,

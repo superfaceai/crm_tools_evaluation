@@ -59,6 +59,7 @@ jobs:
           python run.py ${TOOLSET_ARG} ${TRIALS_ARG} ${SEED_ARG}
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          SUPERFACE_URL: ${{ secrets.SUPERFACE_URL }}
           SUPERFACE_API_KEY: ${{ secrets.SUPERFACE_API_KEY }}
           COMPOSIO_API_KEY: ${{ secrets.COMPOSIO_API_KEY }}
           HUBSPOT_API_KEY: ${{ secrets.HUBSPOT_API_KEY }}
